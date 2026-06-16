@@ -39,6 +39,10 @@
 
     <!-- Composer -->
     <div id="attach-preview" class="attach-preview" hidden></div>
+    <div class="composer-tools">
+      <button type="button" id="btn-think" class="chip-toggle" aria-pressed="false"
+        title="Adaptiv denken (gründlicher, kostet mehr Tokens)">Adaptiv denken</button>
+    </div>
     <form id="composer" class="composer">
       <button type="button" id="btn-attach" class="icon-btn attach-btn" title="Bild anhängen" aria-label="Bild anhängen">📎</button>
       <textarea
@@ -81,16 +85,6 @@
             <option value="xhigh">xhigh</option>
             <option value="max">max</option>
           </select>
-        </label>
-
-        <label class="field-row">
-          <input type="checkbox" id="set-thinking" />
-          <span>Adaptives Nachdenken aktivieren</span>
-        </label>
-
-        <label class="field-row">
-          <input type="checkbox" id="set-allsites" />
-          <span>Auf allen Seiten erlauben (statt pro Seite zu fragen)</span>
         </label>
 
         <label class="field-row">

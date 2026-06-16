@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Community Claude AI Sidebar",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Inoffizieller Community-KI-Agent in der Firefox-Sidebar: liest, klickt, tippt und navigiert Seiten mit deinem eigenen Anthropic-API-Key, plus dauerhafter Chat-Verlauf. Nicht von Anthropic — keine offizielle Claude-App.",
 
   "browser_specific_settings": {
@@ -30,10 +30,7 @@
   ],
 
   "host_permissions": [
-    "https://api.anthropic.com/*"
-  ],
-
-  "optional_host_permissions": [
+    "https://api.anthropic.com/*",
     "<all_urls>"
   ],
 

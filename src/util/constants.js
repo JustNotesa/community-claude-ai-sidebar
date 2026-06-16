@@ -61,9 +61,8 @@ export const DEFAULT_SETTINGS = {
   model: DEFAULT_MODEL,
   thinking: false,          // adaptive thinking on/off (Opus 4.8 supports adaptive only)
   effort: "high",           // low | medium | high | xhigh | max
-  allowAllSites: false,     // grant <all_urls> once instead of per-site prompts
   spendLimitUSD: 0,         // 0 = no limit; otherwise stop a run when estimated cost exceeds this
-  visionScreenshots: false, // allow the screenshot tool to send images to the model
+  visionScreenshots: true,  // screenshot tool on by default (like the original); user can disable in settings
   bridgeEnabled: false,     // "Mit Claude verbinden" — connect to the local MCP bridge
   bridgeUrl: "ws://127.0.0.1:8765",
   bridgeToken: "",          // shared secret printed by the MCP server
