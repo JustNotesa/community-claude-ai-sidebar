@@ -1,0 +1,16 @@
+{
+  "name": "claude-for-firefox",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Community Claude AI Sidebar — inofficial agentic AI sidebar for Firefox using your own Anthropic API key. Not affiliated with Anthropic.",
+  "scripts": {
+    "lint": "web-ext lint --source-dir . --ignore-files \"tests/**\" \"e2e/**\" \"mcp-bridge/**\" \"package.json\" \"package-lock.json\" \"README.md\" \"web-ext-artifacts/**\"",
+    "start": "web-ext run --source-dir . --browser-console --ignore-files \"tests/**\" \"e2e/**\" \"mcp-bridge/**\" \"package.json\" \"package-lock.json\" \"README.md\"",
+    "build": "web-ext build --source-dir . --overwrite-dest --ignore-files \"tests/**\" \"e2e/**\" \"mcp-bridge/**\" \"package.json\" \"package-lock.json\" \"README.md\"",
+    "sign": "web-ext sign --channel=listed --source-dir . --ignore-files \"tests/**\" \"e2e/**\" \"mcp-bridge/**\" \"package.json\" \"package-lock.json\" \"README.md\"",
+    "test": "node --test tests/"
+  },
+  "devDependencies": {
+    "web-ext": "^8.3.0"
+  }
+}

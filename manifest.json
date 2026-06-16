@@ -1,0 +1,64 @@
+{
+  "manifest_version": 3,
+  "name": "Community Claude AI Sidebar",
+  "version": "0.1.0",
+  "description": "Inoffizieller Community-KI-Agent in der Firefox-Sidebar: liest, klickt, tippt und navigiert Seiten mit deinem eigenen Anthropic-API-Key, plus dauerhafter Chat-Verlauf. Nicht von Anthropic — keine offizielle Claude-App.",
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "claude-for-firefox@specialaddon",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": ["websiteContent"]
+      }
+    }
+  },
+
+  "icons": {
+    "48": "icons/icon.svg",
+    "96": "icons/icon.svg",
+    "128": "icons/icon.svg"
+  },
+
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "tabs",
+    "activeTab",
+    "scripting",
+    "contextMenus"
+  ],
+
+  "host_permissions": [
+    "https://api.anthropic.com/*"
+  ],
+
+  "optional_host_permissions": [
+    "<all_urls>"
+  ],
+
+  "background": {
+    "scripts": ["background/background.js"]
+  },
+
+  "sidebar_action": {
+    "default_panel": "sidebar/panel.html",
+    "default_title": "Community Claude AI",
+    "default_icon": "icons/icon.svg",
+    "open_at_install": false
+  },
+
+  "action": {
+    "default_title": "Community Claude AI — Sidebar öffnen/schließen",
+    "default_icon": "icons/icon.svg"
+  },
+
+  "commands": {
+    "_execute_sidebar_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y"
+      },
+      "description": "Claude-Sidebar öffnen/schließen"
+    }
+  }
+}

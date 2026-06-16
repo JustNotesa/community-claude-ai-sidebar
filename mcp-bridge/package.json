@@ -1,0 +1,14 @@
+{
+  "name": "claude-firefox-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server bridging Claude Code/Desktop to the Claude for Firefox extension.",
+  "bin": { "claude-firefox-bridge": "server.js" },
+  "scripts": { "start": "node server.js" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "ws": "^8.18.0",
+    "zod": "^3.25.0"
+  }
+}
