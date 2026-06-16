@@ -1,0 +1,10 @@
+{
+  "summary": {
+    "en-US": "Unofficial community AI sidebar for Firefox. Uses your own Anthropic (Claude) API key to read, click, type and navigate pages, with a chat history that persists. Not affiliated with Anthropic.",
+    "de": "Inoffizielle Community-KI-Sidebar für Firefox. Nutzt deinen eigenen Anthropic-(Claude-)API-Key, um Seiten zu lesen, zu klicken, zu tippen und zu navigieren, mit dauerhaftem Chat-Verlauf. Nicht von Anthropic."
+  },
+  "categories": ["other"],
+  "version": {
+    "license": "MPL-2.0"
+  }
+}

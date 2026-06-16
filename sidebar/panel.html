@@ -38,7 +38,9 @@
     <main id="messages" class="messages" aria-live="polite"></main>
 
     <!-- Composer -->
+    <div id="attach-preview" class="attach-preview" hidden></div>
     <form id="composer" class="composer">
+      <button type="button" id="btn-attach" class="icon-btn attach-btn" title="Bild anhängen" aria-label="Bild anhängen">📎</button>
       <textarea
         id="input"
         class="input"
@@ -48,6 +50,7 @@
       <button type="submit" id="btn-send" class="send-btn" title="Senden">➤</button>
       <button type="button" id="btn-stop" class="stop-btn" title="Stop" hidden>■</button>
     </form>
+    <input type="file" id="image-file" accept="image/*" hidden />
     <div class="statusbar" id="statusbar"></div>
 
     <!-- Settings overlay -->

@@ -18,6 +18,7 @@ const state = {
   running: false,
   abort: null,
   activeTab: null,
+  pendingImage: null, // { data: base64, mediaType } attached to the next message
 };
 
 // ---------- helpers ----------
@@ -165,15 +166,16 @@ function renderHistoryMessage(msg) {
     if (typeof msg.content === "string") {
       addUserBubble(msg.content);
     } else if (Array.isArray(msg.content)) {
-      const texts = msg.content.filter((b) => b.type === "text").map((b) => b.text);
-      if (texts.length) addUserBubble(texts.join("\n"));
-      for (const b of msg.content) {
-        if (b.type === "tool_result") {
-          const line = el("div", "tool " + (b.is_error ? "err" : "ok"));
-          const res = el("div", "res", contentToText(b.content));
-          line.appendChild(res);
-          m.appendChild(line);
+      if (msg.content.some((b) => b.type === "tool_result")) {
+        for (const b of msg.content) {
+          if (b.type === "tool_result") {
+            const line = el("div", "tool " + (b.is_error ? "err" : "ok"));
+            line.appendChild(el("div", "res", contentToText(b.content)));
+            m.appendChild(line);
+          }
         }
+      } else {
+        addUserBubble(msg.content); // text and/or attached image
       }
     }
     return;
@@ -202,10 +204,23 @@ function contentToText(content) {
   return String(content ?? "");
 }
 
-function addUserBubble(text) {
+function addUserBubble(content) {
   const wrap = el("div", "msg user");
   const bubble = el("div", "bubble");
-  bubble.textContent = text;
+  if (typeof content === "string") {
+    bubble.textContent = content;
+  } else if (Array.isArray(content)) {
+    for (const b of content) {
+      if (b.type === "image") {
+        const img = document.createElement("img");
+        img.className = "bubble-img";
+        img.src = `data:${b.source.media_type};base64,${b.source.data}`;
+        bubble.appendChild(img);
+      } else if (b.type === "text") {
+        bubble.appendChild(el("div", null, b.text));
+      }
+    }
+  }
   wrap.appendChild(bubble);
   messagesEl().appendChild(wrap);
 }
@@ -233,7 +248,7 @@ function addToolChip(bubble, name, args) {
 
 // ---------- the send / run flow ----------
 async function send(text) {
-  if (state.running || !text.trim()) return;
+  if (state.running || (!text.trim() && !state.pendingImage)) return;
   if (!(await isReady())) {
     openSettings();
     status("Bitte zuerst anmelden bzw. einen API-Key hinterlegen.");
@@ -245,13 +260,24 @@ async function send(text) {
   // is valid before we add the new user turn.
   await repairHistory();
 
-  // user message
-  state.history.push({ role: "user", content: text });
-  await db.addMessage({ sessionId: state.session.id, role: "user", content: text });
-  addUserBubble(text);
+  // user message — string, or an array with an attached image (+ optional text)
+  let content;
+  if (state.pendingImage) {
+    content = [
+      { type: "image", source: { type: "base64", media_type: state.pendingImage.mediaType, data: state.pendingImage.data } },
+    ];
+    if (text.trim()) content.push({ type: "text", text });
+  } else {
+    content = text;
+  }
+  state.history.push({ role: "user", content });
+  await db.addMessage({ sessionId: state.session.id, role: "user", content });
+  addUserBubble(content);
+  state.pendingImage = null;
+  renderAttachPreview();
   // Title from first message
   if (state.history.filter((h) => h.role === "user").length === 1) {
-    const title = text.slice(0, 40);
+    const title = (text.trim() || "Bild").slice(0, 40);
     await db.updateSession(state.session.id, { title });
     refreshSessions();
   }
@@ -396,6 +422,63 @@ function autoGrow() {
   ta.style.height = Math.min(ta.scrollHeight, 160) + "px";
 }
 
+// ---------- image attachment ----------
+function loadImageAttachment(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const max = 1536; // downscale to keep tokens/size sane
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL("image/png");
+        resolve({ data: dataUrl.split(",")[1], mediaType: "image/png" });
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function attachImage(file) {
+  if (!file || !file.type || !file.type.startsWith("image/")) return;
+  try {
+    state.pendingImage = await loadImageAttachment(file);
+    renderAttachPreview();
+  } catch (_) {
+    status("Bild konnte nicht geladen werden.");
+  }
+}
+
+function renderAttachPreview() {
+  const box = $("attach-preview");
+  box.innerHTML = "";
+  if (!state.pendingImage) {
+    box.hidden = true;
+    return;
+  }
+  box.hidden = false;
+  const thumb = el("div", "thumb");
+  const img = document.createElement("img");
+  img.src = `data:${state.pendingImage.mediaType};base64,${state.pendingImage.data}`;
+  const rm = el("button", "rm", "×");
+  rm.title = "Entfernen";
+  rm.onclick = () => {
+    state.pendingImage = null;
+    renderAttachPreview();
+  };
+  thumb.append(img, rm);
+  box.appendChild(thumb);
+}
+
 // ---------- settings overlay ----------
 function openSettings() {
   $("set-apikey").value = state.settings.apiKey || "";
@@ -509,6 +592,24 @@ function bind() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       $("composer").requestSubmit();
+    }
+  });
+  // Image attachment: 📎 button, file picker, and paste (Ctrl+V).
+  $("btn-attach").addEventListener("click", () => $("image-file").click());
+  $("image-file").addEventListener("change", (e) => {
+    attachImage(e.target.files[0]);
+    e.target.value = "";
+  });
+  $("input").addEventListener("paste", (e) => {
+    for (const it of e.clipboardData?.items || []) {
+      if (it.type && it.type.startsWith("image/")) {
+        const f = it.getAsFile();
+        if (f) {
+          e.preventDefault();
+          attachImage(f);
+        }
+        break;
+      }
     }
   });
   $("btn-stop").addEventListener("click", () => {

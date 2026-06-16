@@ -141,6 +141,16 @@ body {
 .stop-btn { background: var(--danger); color: #fff; }
 .send-btn:disabled { opacity: .5; cursor: default; }
 
+.attach-btn { align-self: flex-end; font-size: 16px; }
+.attach-preview { display: flex; gap: 6px; padding: 6px 8px 0; background: var(--bg-alt); }
+.attach-preview .thumb { position: relative; }
+.attach-preview img { max-height: 56px; max-width: 110px; border-radius: 8px; border: 1px solid var(--border); display: block; }
+.attach-preview .rm {
+  position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; line-height: 1;
+  border: none; border-radius: 50%; background: var(--danger); color: #fff; cursor: pointer; font-size: 13px;
+}
+.bubble-img { max-width: 100%; max-height: 260px; border-radius: 8px; display: block; margin: 2px 0; }
+
 .statusbar { padding: 3px 12px; font-size: 11px; color: var(--ink-soft); min-height: 16px; background: var(--bg-alt); }
 
 /* Overlays */
