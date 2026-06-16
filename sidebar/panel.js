@@ -59,6 +59,24 @@ function populateModelSelect(sel) {
   sel.value = state.settings.model;
 }
 
+// Reflect the adaptive-thinking toggle in the topbar. The knob only exists for
+// models that support it (Opus/Sonnet) — on Haiku we disable and dim it.
+function updateThinkToggle() {
+  const btn = $("btn-think");
+  if (!btn) return;
+  const model = MODELS.find((m) => m.id === state.settings.model);
+  const supported = !!model?.adaptiveThinking;
+  const on = supported && !!state.settings.thinking;
+  btn.disabled = !supported;
+  btn.classList.toggle("on", on);
+  btn.setAttribute("aria-pressed", on ? "true" : "false");
+  btn.title = !supported
+    ? "Adaptiv denken — von diesem Modell nicht unterstützt"
+    : on
+      ? "Adaptiv denken: an (gründlicher, kostet mehr Tokens)"
+      : "Adaptiv denken: aus (für einfache Aufgaben schneller)";
+}
+
 // ---------- sessions ----------
 async function refreshSessions() {
   const list = await db.listSessions();
@@ -485,8 +503,6 @@ function openSettings() {
   populateModelSelect($("set-model"));
   $("set-model").value = state.settings.model;
   $("set-effort").value = state.settings.effort;
-  $("set-thinking").checked = !!state.settings.thinking;
-  $("set-allsites").checked = !!state.settings.allowAllSites;
   $("set-vision").checked = !!state.settings.visionScreenshots;
   $("set-spend").value = state.settings.spendLimitUSD || 0;
   $("set-bridge").checked = !!state.settings.bridgeEnabled;
@@ -532,31 +548,14 @@ async function applySettings() {
   state.settings.apiKey = $("set-apikey").value.trim();
   state.settings.model = $("set-model").value;
   state.settings.effort = $("set-effort").value;
-  state.settings.thinking = $("set-thinking").checked;
   state.settings.visionScreenshots = $("set-vision").checked;
   state.settings.spendLimitUSD = parseFloat($("set-spend").value) || 0;
   state.settings.bridgeEnabled = $("set-bridge").checked;
   state.settings.bridgeToken = $("set-bridge-token").value.trim();
 
-  // "Auf allen Seiten erlauben" — request/revoke <all_urls> once (this runs in a
-  // user-gesture handler, so permissions.request is allowed).
-  const wantAll = $("set-allsites").checked;
-  if (wantAll && !state.settings.allowAllSites) {
-    try {
-      state.settings.allowAllSites = await api.permissions.request({ origins: ["<all_urls>"] });
-    } catch (_) {
-      state.settings.allowAllSites = false;
-    }
-    $("set-allsites").checked = state.settings.allowAllSites;
-  } else if (!wantAll && state.settings.allowAllSites) {
-    try {
-      await api.permissions.remove({ origins: ["<all_urls>"] });
-    } catch (_) {}
-    state.settings.allowAllSites = false;
-  }
-
   await saveSettings();
   $("model-select").value = state.settings.model;
+  updateThinkToggle();
   $("settings").hidden = true;
   status("Einstellungen gespeichert.");
   updateTabBar();
@@ -627,9 +626,19 @@ function bind() {
   $("btn-save-settings").addEventListener("click", applySettings);
   $("btn-close-settings").addEventListener("click", () => ($("settings").hidden = true));
   $("btn-grant").addEventListener("click", grantAccess);
+  // Adaptive-thinking quick toggle (per-chat reasoning mode, lives in the topbar).
+  $("btn-think").addEventListener("click", async () => {
+    const model = MODELS.find((m) => m.id === state.settings.model);
+    if (!model?.adaptiveThinking) return;
+    state.settings.thinking = !state.settings.thinking;
+    await saveSettings();
+    updateThinkToggle();
+    status(state.settings.thinking ? "Adaptiv denken: an" : "Adaptiv denken: aus");
+  });
   $("model-select").addEventListener("change", async (e) => {
     state.settings.model = e.target.value;
     await saveSettings();
+    updateThinkToggle();
   });
   $("btn-export").addEventListener("click", exportData);
   $("btn-import").addEventListener("click", importData);
@@ -662,6 +671,7 @@ async function init() {
   await loadSettings();
   populateModelSelect($("model-select"));
   bind();
+  updateThinkToggle();
   await updateTabBar();
   const sessions = await db.listSessions();
   if (sessions.length) await selectSession(sessions[0].id);

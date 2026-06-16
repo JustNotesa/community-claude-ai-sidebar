@@ -150,12 +150,13 @@ export async function executeTool(name, input, ctx) {
           ],
         };
       } catch (e) {
-        // Firefox's captureVisibleTab needs <all_urls> (or an active activeTab
-        // gesture) — a single per-site grant is NOT enough.
+        // With <all_urls> as a required permission, captureVisibleTab works on
+        // any http(s) page. It can still fail on protected browser pages
+        // (about:, addons.mozilla.org, view-source:, the PDF viewer …).
         return {
           content:
-            "Screenshot nicht möglich (" + (e?.message || e) + "). Screenshots brauchen die " +
-            "Berechtigung 'Auf allen Seiten erlauben' — bitte in den Einstellungen (Zahnrad) aktivieren.",
+            "Screenshot auf dieser Seite nicht möglich (" + (e?.message || e) + "). Geschützte " +
+            "Browser-Seiten (z. B. about:, Add-on-Seiten) lassen keine Screenshots zu.",
           is_error: true,
         };
       }

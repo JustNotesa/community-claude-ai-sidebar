@@ -58,6 +58,20 @@ body {
   font-size: 18px; cursor: pointer; width: 30px; height: 30px; border-radius: 7px;
 }
 .icon-btn:hover { background: var(--border); }
+.icon-btn:disabled { opacity: .35; cursor: default; }
+.icon-btn:disabled:hover { background: transparent; }
+
+/* Adaptive-thinking toggle — labelled chip sitting just above the composer. */
+.composer-tools { display: flex; gap: 6px; padding: 6px 8px 0; background: var(--bg-alt); }
+.chip-toggle {
+  font-size: 12px; line-height: 1.4; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg-elev); color: var(--ink-soft);
+  border-radius: 999px; padding: 3px 11px;
+}
+.chip-toggle:hover { border-color: var(--accent); color: var(--ink); }
+.chip-toggle.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.chip-toggle.on:hover { color: var(--accent-ink); }
+.chip-toggle:disabled { opacity: .4; cursor: default; border-color: var(--border); color: var(--ink-soft); }
 .model-select {
   flex: 1 1 auto; min-width: 0; max-width: 200px; font-size: 13px;
   background: var(--bg-elev); color: var(--ink);
