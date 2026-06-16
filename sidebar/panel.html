@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="panel.css" />
+    <title>Claude</title>
+  </head>
+  <body>
+    <!-- Top bar -->
+    <header class="topbar">
+      <button id="btn-sessions" class="icon-btn" title="Chats" aria-label="Chats">☰</button>
+      <select id="model-select" class="model-select" title="Modell"></select>
+      <button id="btn-new" class="icon-btn" title="Neuer Chat" aria-label="Neuer Chat">＋</button>
+      <button id="btn-settings" class="icon-btn" title="Einstellungen" aria-label="Einstellungen">⚙</button>
+    </header>
+
+    <!-- Active-tab / page-access bar -->
+    <div class="tabbar" id="tabbar">
+      <span class="dot" id="access-dot" title="Seitenzugriff"></span>
+      <span class="tab-title" id="tab-title">—</span>
+      <button id="btn-grant" class="grant-btn" hidden>Agent für diese Seite freigeben</button>
+    </div>
+
+    <!-- Session list drawer -->
+    <aside class="drawer" id="drawer" hidden>
+      <div class="drawer-head">
+        <strong>Chats</strong>
+        <div>
+          <button id="btn-export" class="mini-btn" title="Exportieren">Export</button>
+          <button id="btn-import" class="mini-btn" title="Importieren">Import</button>
+        </div>
+      </div>
+      <ul id="session-list" class="session-list"></ul>
+    </aside>
+
+    <!-- Conversation -->
+    <main id="messages" class="messages" aria-live="polite"></main>
+
+    <!-- Composer -->
+    <form id="composer" class="composer">
+      <textarea
+        id="input"
+        class="input"
+        rows="1"
+        placeholder="Frag Claude …"
+      ></textarea>
+      <button type="submit" id="btn-send" class="send-btn" title="Senden">➤</button>
+      <button type="button" id="btn-stop" class="stop-btn" title="Stop" hidden>■</button>
+    </form>
+    <div class="statusbar" id="statusbar"></div>
+
+    <!-- Settings overlay -->
+    <div class="overlay" id="settings" hidden>
+      <div class="panel">
+        <h2>Einstellungen</h2>
+        <p class="disclaimer">Inoffizielles Community-Add-on — nicht von Anthropic. Nutzt deinen
+          eigenen Anthropic-API-Key.</p>
+
+        <label class="field">
+          <span>Anthropic API-Key</span>
+          <input type="password" id="set-apikey" placeholder="sk-ant-…" autocomplete="off" />
+          <small>Wird nur lokal gespeichert und ausschließlich an api.anthropic.com gesendet.
+            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Key holen</a>.</small>
+        </label>
+
+        <label class="field">
+          <span>Modell</span>
+          <select id="set-model"></select>
+        </label>
+
+        <label class="field">
+          <span>Aufwand (effort)</span>
+          <select id="set-effort">
+            <option value="low">low</option>
+            <option value="medium">medium</option>
+            <option value="high">high</option>
+            <option value="xhigh">xhigh</option>
+            <option value="max">max</option>
+          </select>
+        </label>
+
+        <label class="field-row">
+          <input type="checkbox" id="set-thinking" />
+          <span>Adaptives Nachdenken aktivieren</span>
+        </label>
+
+        <label class="field-row">
+          <input type="checkbox" id="set-allsites" />
+          <span>Auf allen Seiten erlauben (statt pro Seite zu fragen)</span>
+        </label>
+
+        <label class="field-row">
+          <input type="checkbox" id="set-vision" />
+          <span>Screenshots an das Modell senden (Vision)</span>
+        </label>
+
+        <label class="field">
+          <span>Ausgabelimit pro Lauf (USD, 0 = kein Limit)</span>
+          <input type="number" id="set-spend" min="0" step="0.1" />
+        </label>
+
+        <hr class="sep" />
+
+        <label class="field-row">
+          <input type="checkbox" id="set-bridge" />
+          <span>Mit Claude verbinden (MCP-Bridge — Firefox von Claude Code/Desktop steuern)</span>
+        </label>
+        <label class="field">
+          <span>Bridge-Token</span>
+          <input type="password" id="set-bridge-token" placeholder="Token aus dem Terminal einfügen…" autocomplete="off" />
+          <small>Wird vom MCP-Server beim Start ausgegeben. Status:
+            <span id="bridge-status">getrennt</span>. Sidebar offen lassen, solange Claude steuern soll.</small>
+        </label>
+
+        <div class="settings-actions">
+          <button id="btn-save-settings" class="primary">Speichern</button>
+          <button id="btn-close-settings" class="ghost">Schließen</button>
+        </div>
+      </div>
+    </div>
+
+    <input type="file" id="import-file" accept="application/json" hidden />
+
+    <script type="module" src="panel.js"></script>
+  </body>
+</html>

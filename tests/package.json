@@ -1,0 +1,15 @@
+{
+  "name": "claude-firefox-tests",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Test harness (not shipped with the extension).",
+  "devDependencies": {
+    "fake-indexeddb": "^6.0.0",
+    "playwright": "^1.48.0"
+  },
+  "dependencies": {
+    "geckodriver": "^6.1.0",
+    "selenium-webdriver": "^4.45.0"
+  }
+}

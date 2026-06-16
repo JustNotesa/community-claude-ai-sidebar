@@ -1,0 +1,19 @@
+# dependencies
+node_modules/
+**/node_modules/
+
+# secrets / local state
+mcp-bridge/.token
+# AMO signing credentials — never commit (use WEB_EXT_API_KEY / WEB_EXT_API_SECRET)
+.env
+*.env
+
+# build output
+web-ext-artifacts/
+
+# test artifacts
+tests/*.png
+
+# macOS / misc
+.DS_Store
+*.log

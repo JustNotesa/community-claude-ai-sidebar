@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- Community icon: a chat bubble with an "agent cursor" — NOT the Claude logo. -->
+  <rect width="128" height="128" rx="28" fill="#26231f"/>
+  <rect x="22" y="26" width="84" height="60" rx="16" fill="#f4f1ea"/>
+  <path d="M40 84 v19 l19 -16 z" fill="#f4f1ea"/>
+  <path d="M52 43 l31 16.5 -13 3.6 -3.6 13 z" fill="#d97757" stroke="#26231f" stroke-width="2.6" stroke-linejoin="round"/>
+</svg>

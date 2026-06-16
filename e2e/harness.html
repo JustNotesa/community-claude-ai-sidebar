@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Claude E2E Harness</title>
+  </head>
+  <body>
+    <!-- Hidden automation harness: drives the real agent loop against a real
+         tab from an extension-page context. Not referenced by the manifest/UI;
+         exclude from release builds. -->
+    <input id="key" type="text" />
+    <input id="task" type="text" />
+    <button id="run">run</button>
+    <pre id="result"></pre>
+    <script type="module" src="harness.js"></script>
+  </body>
+</html>
