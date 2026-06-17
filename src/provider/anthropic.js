@@ -54,6 +54,7 @@ export function estimateCost(modelId, usage) {
 export async function streamMessages({ headers, body, signal, onText, onThinking }) {
   const res = await fetch(API_URL, {
     method: "POST",
+    credentials: "omit", // never attach the user's cookies to API calls
     headers,
     body: JSON.stringify(body),
     signal,
