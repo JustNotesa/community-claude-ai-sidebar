@@ -6,7 +6,7 @@ import { runAgent, hasHostAccess } from "../src/agent/agent.js";
 import { renderMarkdown } from "../src/ui/markdown.js";
 import { providerForSettings, getProvider } from "../src/provider/provider.js";
 import { startBridge, stopBridge } from "../src/bridge/bridge.js";
-import { MODELS, DEFAULT_SETTINGS, SETTINGS_KEY, AUTH_METHODS } from "../src/util/constants.js";
+import { MODELS, DEFAULT_SETTINGS, SETTINGS_KEY, AUTH_METHODS, OAUTH } from "../src/util/constants.js";
 
 const oauth = getProvider("subscription").oauth;
 
@@ -542,13 +542,60 @@ async function refreshSubStatus() {
   }
 }
 
+// Watches the OAuth callback tab: Anthropic redirects to a page whose URL
+// carries ?code=…&state=…, so we read it straight from the tab and exchange
+// automatically — no copy/paste. The manual field stays as a fallback.
+let subTabListener = null;
+function stopSubTabWatch() {
+  if (subTabListener) {
+    try { api.tabs.onUpdated.removeListener(subTabListener); } catch (_) {}
+    subTabListener = null;
+  }
+}
+function watchForCallback(tabId) {
+  stopSubTabWatch();
+  subTabListener = (changedId, _info, tab) => {
+    if (changedId !== tabId) return;
+    const u = tab && tab.url;
+    if (!u || u.indexOf(OAUTH.redirectUri) !== 0) return;
+    let code, state;
+    try {
+      const q = new URL(u).searchParams;
+      code = q.get("code");
+      state = q.get("state");
+    } catch (_) { return; }
+    if (!code) return;
+    stopSubTabWatch();
+    redeemCode(state ? `${code}#${state}` : code, true).then(() => {
+      api.tabs.remove(tabId).catch(() => {});
+    });
+  };
+  api.tabs.onUpdated.addListener(subTabListener);
+}
+
+// Shared redemption used by both auto-capture and the manual "Bestätigen" button.
+async function redeemCode(pasted, auto = false) {
+  subStatus(auto ? "Code automatisch erkannt — wird eingelöst …" : "Code wird eingelöst …");
+  try {
+    await oauth.exchangeCode(pasted);
+    $("set-sub-code").value = "";
+    $("sub-code-field").hidden = true;
+    await refreshSubStatus();
+    subStatus("Mit Claude-Konto angemeldet ✓");
+    return true;
+  } catch (e) {
+    subStatus("Anmeldung fehlgeschlagen: " + e.message);
+    return false;
+  }
+}
+
 async function subLogin() {
   try {
     const url = await oauth.startLogin();
-    await api.tabs.create({ url });
+    const tab = await api.tabs.create({ url });
+    if (tab && typeof tab.id === "number") watchForCallback(tab.id);
     $("sub-code-field").hidden = false;
-    $("set-sub-code").focus();
-    subStatus("Nach dem Login den angezeigten Code hier einfügen.");
+    subStatus("Im geöffneten Tab anmelden — der Code wird danach automatisch übernommen.");
   } catch (e) {
     subStatus("Login fehlgeschlagen: " + e.message);
   }
@@ -560,19 +607,11 @@ async function subExchange() {
     subStatus("Bitte zuerst den Code von der Anthropic-Seite einfügen.");
     return;
   }
-  subStatus("Code wird eingelöst …");
-  try {
-    await oauth.exchangeCode(code);
-    $("set-sub-code").value = "";
-    $("sub-code-field").hidden = true;
-    await refreshSubStatus();
-    subStatus("Mit Claude-Konto angemeldet ✓");
-  } catch (e) {
-    subStatus("Anmeldung fehlgeschlagen: " + e.message);
-  }
+  await redeemCode(code, false);
 }
 
 async function subLogout() {
+  stopSubTabWatch();
   await oauth.logout();
   await refreshSubStatus();
   subStatus("Abgemeldet.");
