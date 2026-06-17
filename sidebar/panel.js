@@ -522,6 +522,14 @@ function updateAuthMethodUI() {
   $("auth-apikey").hidden = sub;
 }
 
+// Feedback for the subscription flow must land INSIDE the settings overlay —
+// the global status() writes to #statusbar in the chat view, which is hidden
+// behind the overlay while settings are open.
+function subStatus(msg) {
+  const el = $("sub-status");
+  if (el) el.textContent = msg;
+}
+
 async function refreshSubStatus() {
   const el = $("sub-status");
   if (!el) return;
@@ -540,30 +548,34 @@ async function subLogin() {
     await api.tabs.create({ url });
     $("sub-code-field").hidden = false;
     $("set-sub-code").focus();
-    status("Nach dem Login den angezeigten Code hier einfügen.");
+    subStatus("Nach dem Login den angezeigten Code hier einfügen.");
   } catch (e) {
-    status("Login fehlgeschlagen: " + e.message);
+    subStatus("Login fehlgeschlagen: " + e.message);
   }
 }
 
 async function subExchange() {
   const code = $("set-sub-code").value.trim();
-  if (!code) return;
+  if (!code) {
+    subStatus("Bitte zuerst den Code von der Anthropic-Seite einfügen.");
+    return;
+  }
+  subStatus("Code wird eingelöst …");
   try {
     await oauth.exchangeCode(code);
     $("set-sub-code").value = "";
     $("sub-code-field").hidden = true;
     await refreshSubStatus();
-    status("Mit Claude-Konto angemeldet.");
+    subStatus("Mit Claude-Konto angemeldet ✓");
   } catch (e) {
-    status("Anmeldung fehlgeschlagen: " + e.message);
+    subStatus("Anmeldung fehlgeschlagen: " + e.message);
   }
 }
 
 async function subLogout() {
   await oauth.logout();
   await refreshSubStatus();
-  status("Abgemeldet.");
+  subStatus("Abgemeldet.");
 }
 
 // Start/stop the MCP bridge based on the current settings.
