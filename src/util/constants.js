@@ -39,7 +39,7 @@ export const AUTH_METHODS = { API_KEY: "apikey", SUBSCRIPTION: "subscription" };
 export const OAUTH = {
   clientId: "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
   authorizeUrl: "https://claude.ai/oauth/authorize",
-  tokenUrl: "https://console.anthropic.com/v1/oauth/token",
+  tokenUrl: "https://platform.claude.com/v1/oauth/token",
   redirectUri: "https://console.anthropic.com/oauth/code/callback",
   scopes: "org:create_api_key user:profile user:inference",
   betaHeader: "oauth-2025-04-20",
