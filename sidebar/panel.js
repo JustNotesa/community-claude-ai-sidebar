@@ -548,9 +548,40 @@ async function refreshSubStatus() {
   }
 }
 
-// Watches the OAuth callback tab: Anthropic redirects to a page whose URL
-// carries ?code=…&state=…, so we read it straight from the tab and exchange
-// automatically — no copy/paste. The manual field stays as a fallback.
+// Auto-capture the OAuth code so the user doesn't copy/paste. The code lands on
+// Anthropic's callback page (console.anthropic.com OR platform.claude.com) in
+// the URL and/or the page text. Two paths feed it back here:
+//   1. A content script on the callback page (src/content/oauth-grab.js) reads
+//      it from the URL or DOM and messages it here — the robust path.
+//   2. A tabs.onUpdated watcher reading the tab URL — fallback if the content
+//      script can't run.
+// Both funnel through autoRedeem(), guarded so only the first one exchanges.
+const CALLBACK_PREFIXES = [
+  "https://console.anthropic.com/oauth/code/callback",
+  "https://platform.claude.com/oauth/code/callback",
+];
+function codeFromCallbackUrl(u) {
+  if (!u || !CALLBACK_PREFIXES.some((p) => u.indexOf(p) === 0)) return null;
+  try {
+    const q = new URL(u).searchParams;
+    const code = q.get("code");
+    const state = q.get("state");
+    return code ? (state ? `${code}#${state}` : code) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+let subRedeeming = false;
+async function autoRedeem(pasted, tabId) {
+  if (subRedeeming || !pasted) return;
+  subRedeeming = true;
+  stopSubTabWatch();
+  const ok = await redeemCode(pasted, true);
+  if (ok && typeof tabId === "number") api.tabs.remove(tabId).catch(() => {});
+  subRedeeming = false; // reset so a failed attempt can still be retried
+}
+
 let subTabListener = null;
 function stopSubTabWatch() {
   if (subTabListener) {
@@ -562,22 +593,18 @@ function watchForCallback(tabId) {
   stopSubTabWatch();
   subTabListener = (changedId, _info, tab) => {
     if (changedId !== tabId) return;
-    const u = tab && tab.url;
-    if (!u || u.indexOf(OAUTH.redirectUri) !== 0) return;
-    let code, state;
-    try {
-      const q = new URL(u).searchParams;
-      code = q.get("code");
-      state = q.get("state");
-    } catch (_) { return; }
-    if (!code) return;
-    stopSubTabWatch();
-    redeemCode(state ? `${code}#${state}` : code, true).then(() => {
-      api.tabs.remove(tabId).catch(() => {});
-    });
+    const pasted = codeFromCallbackUrl(tab && tab.url);
+    if (pasted) autoRedeem(pasted, tabId);
   };
   api.tabs.onUpdated.addListener(subTabListener);
 }
+
+// The callback-page content script messages the code here.
+api.runtime.onMessage.addListener((msg, sender) => {
+  if (msg && msg.type === "oauth-code" && msg.pasted) {
+    autoRedeem(msg.pasted, sender && sender.tab && sender.tab.id);
+  }
+});
 
 // Shared redemption used by both auto-capture and the manual "Bestätigen" button.
 async function redeemCode(pasted, auto = false) {
