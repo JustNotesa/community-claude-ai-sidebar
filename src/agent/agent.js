@@ -227,7 +227,7 @@ export async function runAgent({ history, settings, tabId, cb, signal }) {
 
       const cost = provider.estimateCost(settings.model, turn.usage);
       totalCost += cost;
-      cb.onUsage && cb.onUsage(turn.usage, cost, totalCost);
+      cb.onUsage && cb.onUsage(turn.usage, cost, totalCost, turn.rateLimits);
 
       if (settings.spendLimitUSD > 0 && totalCost >= settings.spendLimitUSD) {
         return cb.onDone(`Ausgabelimit erreicht (~$${totalCost.toFixed(3)}).`);

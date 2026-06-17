@@ -7,6 +7,7 @@ import { renderMarkdown } from "../src/ui/markdown.js";
 import { providerForSettings, getProvider } from "../src/provider/provider.js";
 import { startBridge, stopBridge } from "../src/bridge/bridge.js";
 import { MODELS, DEFAULT_SETTINGS, SETTINGS_KEY, AUTH_METHODS, OAUTH } from "../src/util/constants.js";
+import { buildUsageView } from "../src/util/usage.js";
 
 const oauth = getProvider("subscription").oauth;
 
@@ -21,6 +22,8 @@ const state = {
   abort: null,
   activeTab: null,
   pendingImage: null, // { data: base64, mediaType } attached to the next message
+  lastUsage: null, // token usage of the most recent turn (context-window meter)
+  lastRateLimits: {}, // latest anthropic-ratelimit-* headers (plan-usage bars)
 };
 
 // ---------- helpers ----------
@@ -353,8 +356,11 @@ async function send(text) {
     async onToolResultsPersist(results) {
       await db.addMessage({ sessionId: state.session.id, role: "user", content: results });
     },
-    onUsage(usage, cost, total) {
+    onUsage(usage, cost, total, rateLimits) {
       status(`Lauf-Kosten ~$${total.toFixed(4)} · ${usage.output_tokens || 0} Output-Tokens`);
+      state.lastUsage = usage;
+      if (rateLimits && Object.keys(rateLimits).length) state.lastRateLimits = rateLimits;
+      renderUsage();
     },
     onDone(reason) {
       setRunning(false);
@@ -617,6 +623,63 @@ async function subLogout() {
   subStatus("Abgemeldet.");
 }
 
+// ---------- usage & limits ----------
+function fmtTokens(n) {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1000) return (n / 1000).toFixed(1) + "k";
+  return String(n);
+}
+
+function renderUsage() {
+  const model = MODELS.find((m) => m.id === state.settings.model);
+  const view = buildUsageView({
+    rateLimits: state.lastRateLimits,
+    usage: state.lastUsage,
+    model,
+  });
+
+  const ctx = view.context;
+  if (ctx) {
+    $("usage-context-val").textContent = `${fmtTokens(ctx.used)} / ${fmtTokens(ctx.total)} (${ctx.percent}%)`;
+    $("usage-context-fill").style.width = ctx.percent + "%";
+  } else {
+    $("usage-context-val").textContent = "— (noch keine Anfrage)";
+    $("usage-context-fill").style.width = "0%";
+  }
+
+  const wrap = $("usage-windows");
+  wrap.innerHTML = "";
+  for (const w of view.windows) {
+    const block = el("div", "usage-block");
+    const head = el("div", "usage-row-head");
+    head.append(el("span", null, w.label), el("span", "pct", w.percent + "%"));
+    const meter = el("div", "meter");
+    const fill = el("div", "meter-fill");
+    fill.style.width = w.percent + "%";
+    meter.append(fill);
+    block.append(head, meter);
+    if (w.detail) block.append(el("div", "usage-sub", w.detail));
+    wrap.append(block);
+  }
+
+  $("usage-plan-title").hidden = view.windows.length === 0;
+  const hint = $("usage-hint");
+  if (view.source === "apikey") {
+    hint.textContent = "API-Key-Tarif: Anfragen/Tokens pro Minute.";
+  } else if (view.source === "none") {
+    hint.textContent = state.lastUsage
+      ? "Keine Limit-Daten lesbar — der Server liefert sie für diesen Zugang evtl. nicht aus."
+      : "Sende zuerst eine Nachricht, dann erscheinen hier die Limits.";
+  } else {
+    hint.textContent = "";
+  }
+}
+
+function openUsage() {
+  renderUsage();
+  $("usage").hidden = false;
+}
+
 // Start/stop the MCP bridge based on the current settings.
 function applyBridge() {
   if (state.settings.bridgeEnabled && state.settings.bridgeToken) {
@@ -730,6 +793,8 @@ function bind() {
     d.hidden = !d.hidden;
     if (!d.hidden) refreshSessions();
   });
+  $("btn-usage").addEventListener("click", openUsage);
+  $("btn-close-usage").addEventListener("click", () => ($("usage").hidden = true));
   $("btn-settings").addEventListener("click", openSettings);
   $("btn-save-settings").addEventListener("click", applySettings);
   $("btn-close-settings").addEventListener("click", () => ($("settings").hidden = true));

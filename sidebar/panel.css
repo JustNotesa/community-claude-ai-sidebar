@@ -187,3 +187,12 @@ body {
 .sep { border: none; border-top: 1px solid var(--border); margin: 14px 0 12px; }
 
 .empty { color: var(--ink-soft); text-align: center; margin-top: 40px; font-size: 13px; padding: 0 20px; }
+
+/* Usage & limits panel */
+.usage-block { margin-bottom: 18px; }
+.usage-row-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; margin-bottom: 5px; }
+.usage-row-head .pct { color: var(--ink-soft); }
+.usage-sub { font-size: 11px; color: var(--ink-soft); margin: 3px 0 0; }
+.meter { height: 6px; border-radius: 4px; background: var(--bg-alt); overflow: hidden; }
+.meter-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width .25s ease; }
+#usage-windows:empty { display: none; }

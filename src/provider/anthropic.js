@@ -71,7 +71,18 @@ export async function streamMessages({ headers, body, signal, onText, onThinking
     e.status = res.status;
     throw e;
   }
-  return parseSSE(res.body, { onText, onThinking });
+
+  // Capture rate-limit / usage-limit headers for the usage display. Which ones
+  // are actually readable depends on the server's Access-Control-Expose-Headers
+  // (cross-origin fetch); we keep whatever is exposed and parse it client-side.
+  const rateLimits = {};
+  res.headers.forEach((value, key) => {
+    if (key.startsWith("anthropic-ratelimit-") || key === "retry-after") rateLimits[key] = value;
+  });
+
+  const result = await parseSSE(res.body, { onText, onThinking });
+  result.rateLimits = rateLimits;
+  return result;
 }
 
 export async function parseSSE(stream, { onText, onThinking } = {}) {
