@@ -34,6 +34,17 @@
     "<all_urls>"
   ],
 
+  "content_scripts": [
+    {
+      "matches": [
+        "https://console.anthropic.com/oauth/code/callback*",
+        "https://platform.claude.com/oauth/code/callback*"
+      ],
+      "js": ["src/content/oauth-grab.js"],
+      "run_at": "document_idle"
+    }
+  ],
+
   "background": {
     "scripts": ["background/background.js"]
   },
