@@ -70,15 +70,17 @@ async function exchangeCode(pasted) {
   const pkce = g[PKCE_KEY];
   if (!pkce) throw new Error("Kein Login gestartet — bitte zuerst „Anmelden“ klicken.");
   const [code, stateFromCode] = String(pasted).trim().split("#");
+  // Form-urlencoded, matching the official browser extension's token exchange
+  // (the API expects application/x-www-form-urlencoded here, not JSON).
   const res = await fetch(OAUTH.tokenUrl, {
     method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
       grant_type: "authorization_code",
-      code,
-      state: stateFromCode || pkce.state,
-      redirect_uri: OAUTH.redirectUri,
       client_id: OAUTH.clientId,
+      code,
+      redirect_uri: OAUTH.redirectUri,
+      state: stateFromCode || pkce.state,
       code_verifier: pkce.verifier,
     }),
   });
@@ -102,8 +104,8 @@ async function exchangeCode(pasted) {
 async function refresh(refresh_token) {
   const res = await fetch(OAUTH.tokenUrl, {
     method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ grant_type: "refresh_token", refresh_token, client_id: OAUTH.clientId }),
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "refresh_token", client_id: OAUTH.clientId, refresh_token }),
   });
   if (!res.ok) throw new Error("Token-Refresh fehlgeschlagen — bitte erneut anmelden.");
   const data = await res.json();
