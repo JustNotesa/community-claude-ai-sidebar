@@ -572,6 +572,9 @@ function codeFromCallbackUrl(u) {
   }
 }
 
+// One-shot per login: auto-capture exchanges exactly once. subLogin() resets the
+// latch for each new attempt; a failed auto-exchange is retried via "Anmelden"
+// (fresh code) or the manual "Bestätigen" field — never by silently re-firing.
 let subRedeeming = false;
 async function autoRedeem(pasted, tabId) {
   if (subRedeeming || !pasted) return;
@@ -579,7 +582,6 @@ async function autoRedeem(pasted, tabId) {
   stopSubTabWatch();
   const ok = await redeemCode(pasted, true);
   if (ok && typeof tabId === "number") api.tabs.remove(tabId).catch(() => {});
-  subRedeeming = false; // reset so a failed attempt can still be retried
 }
 
 let subTabListener = null;
@@ -623,6 +625,7 @@ async function redeemCode(pasted, auto = false) {
 }
 
 async function subLogin() {
+  subRedeeming = false; // new attempt → allow auto-capture to exchange once
   try {
     const url = await oauth.startLogin();
     const tab = await api.tabs.create({ url });

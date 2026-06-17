@@ -72,8 +72,12 @@ async function exchangeCode(pasted) {
   const [code, stateFromCode] = String(pasted).trim().split("#");
   // Form-urlencoded, matching the official browser extension's token exchange
   // (the API expects application/x-www-form-urlencoded here, not JSON).
+  // credentials:"omit" is essential: without it the browser attaches the user's
+  // claude.ai session cookies, and the server then rate-limits the exchange as a
+  // session request (the official extension omits credentials for the same reason).
   const res = await fetch(OAUTH.tokenUrl, {
     method: "POST",
+    credentials: "omit",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       grant_type: "authorization_code",
@@ -104,6 +108,7 @@ async function exchangeCode(pasted) {
 async function refresh(refresh_token) {
   const res = await fetch(OAUTH.tokenUrl, {
     method: "POST",
+    credentials: "omit",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ grant_type: "refresh_token", client_id: OAUTH.clientId, refresh_token }),
   });
