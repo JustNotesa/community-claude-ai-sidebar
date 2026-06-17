@@ -61,15 +61,45 @@
     <div class="overlay" id="settings" hidden>
       <div class="panel">
         <h2>Einstellungen</h2>
-        <p class="disclaimer">Inoffizielles Community-Add-on — nicht von Anthropic. Nutzt deinen
-          eigenen Anthropic-API-Key.</p>
+        <p class="disclaimer">Inoffizielles Community-Add-on — nicht von Anthropic.</p>
 
         <label class="field">
-          <span>Anthropic API-Key</span>
-          <input type="password" id="set-apikey" placeholder="sk-ant-…" autocomplete="off" />
-          <small>Wird nur lokal gespeichert und ausschließlich an api.anthropic.com gesendet.
-            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Key holen</a>.</small>
+          <span>Anmeldemethode</span>
+          <select id="set-auth-method">
+            <option value="apikey">Anthropic API-Key</option>
+            <option value="subscription">Claude-Abo (Login mit Pro/Max-Konto)</option>
+          </select>
         </label>
+
+        <!-- API-key auth -->
+        <div id="auth-apikey">
+          <label class="field">
+            <span>Anthropic API-Key</span>
+            <input type="password" id="set-apikey" placeholder="sk-ant-…" autocomplete="off" />
+            <small>Wird nur lokal gespeichert und ausschließlich an api.anthropic.com gesendet.
+              <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Key holen</a>.</small>
+          </label>
+        </div>
+
+        <!-- Subscription (OAuth) auth -->
+        <div id="auth-subscription" hidden>
+          <label class="field">
+            <span>Claude-Abo</span>
+            <small id="sub-status">Nicht angemeldet.</small>
+          </label>
+          <div class="settings-actions">
+            <button type="button" id="btn-sub-login" class="primary">Anmelden</button>
+            <button type="button" id="btn-sub-logout" class="ghost">Abmelden</button>
+          </div>
+          <label class="field" id="sub-code-field" hidden>
+            <span>Code einfügen</span>
+            <input type="text" id="set-sub-code" placeholder="Code von der Anthropic-Seite…" autocomplete="off" />
+            <small>Nach dem Login zeigt Anthropic einen Code an. Hier einfügen und „Bestätigen“.</small>
+            <button type="button" id="btn-sub-exchange" class="primary">Bestätigen</button>
+          </label>
+          <small class="disclaimer">Login mit deinem Claude-Konto über den Claude-Code-OAuth-Flow.
+            Nutzung des Abos über ein Drittanbieter-Tool ist eine Grauzone gegenüber Anthropics Nutzungsbedingungen.</small>
+        </div>
 
         <label class="field">
           <span>Modell</span>

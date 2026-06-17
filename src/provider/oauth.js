@@ -1,10 +1,3 @@
-// ⚠️ PARKED — NOT WIRED INTO THE BUILD.
-// Subscription/OAuth auth from a third-party tool violates Anthropic's Consumer
-// Terms and is blocked server-side (returns "OAuth authentication is currently
-// not supported"). This file is kept for reference only; it is not imported or
-// registered anywhere active. Do not re-enable without an explicit, ToS-aware
-// decision. The compliant path is the API-key provider (anthropic.js).
-//
 // Claude subscription provider — logs in with the user's Claude (Pro/Max)
 // account via the Claude Code OAuth flow and calls /v1/messages with a Bearer
 // token. No API key, no per-token billing.
