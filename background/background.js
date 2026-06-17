@@ -6,6 +6,40 @@
 "use strict";
 const api = typeof browser !== "undefined" ? browser : chrome;
 
+// --- User-Agent rewrite for Anthropic OAuth/API calls -----------------------
+// Anthropic's OAuth token endpoint rejects requests carrying a real browser
+// User-Agent with HTTP 429: the Claude Code OAuth client (9d1c250a) is meant to
+// run from the CLI, not a browser. Verified empirically — Chrome/Firefox/Safari
+// UAs → 429, a CLI-style or empty UA → accepted. fetch() can't set User-Agent
+// (forbidden header), so rewrite it here for exactly these endpoints. Firefox
+// still supports blocking webRequest (Chrome MV3 does not).
+const UA_REWRITE_URLS = [
+  "https://platform.claude.com/v1/oauth/token",
+  "https://api.anthropic.com/v1/messages",
+];
+const CLI_UA = "claude-cli/1.0.0 (external, cli)";
+
+try {
+  api.webRequest.onBeforeSendHeaders.addListener(
+    (details) => {
+      const headers = details.requestHeaders || [];
+      let found = false;
+      for (const h of headers) {
+        if (h.name.toLowerCase() === "user-agent") {
+          h.value = CLI_UA;
+          found = true;
+        }
+      }
+      if (!found) headers.push({ name: "User-Agent", value: CLI_UA });
+      return { requestHeaders: headers };
+    },
+    { urls: UA_REWRITE_URLS },
+    ["blocking", "requestHeaders"]
+  );
+} catch (e) {
+  console.error("[Claude] UA-rewrite listener failed to register:", e);
+}
+
 // Toolbar button toggles the sidebar (the click is a valid user gesture).
 api.action.onClicked.addListener(async () => {
   try {

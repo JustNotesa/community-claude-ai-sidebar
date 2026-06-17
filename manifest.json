@@ -26,7 +26,9 @@
     "tabs",
     "activeTab",
     "scripting",
-    "contextMenus"
+    "contextMenus",
+    "webRequest",
+    "webRequestBlocking"
   ],
 
   "host_permissions": [
