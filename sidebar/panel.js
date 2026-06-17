@@ -4,9 +4,11 @@
 import * as db from "../src/storage/db.js";
 import { runAgent, hasHostAccess } from "../src/agent/agent.js";
 import { renderMarkdown } from "../src/ui/markdown.js";
-import { providerForSettings } from "../src/provider/provider.js";
+import { providerForSettings, getProvider } from "../src/provider/provider.js";
 import { startBridge, stopBridge } from "../src/bridge/bridge.js";
-import { MODELS, DEFAULT_SETTINGS, SETTINGS_KEY } from "../src/util/constants.js";
+import { MODELS, DEFAULT_SETTINGS, SETTINGS_KEY, AUTH_METHODS } from "../src/util/constants.js";
+
+const oauth = getProvider("subscription").oauth;
 
 const api = typeof browser !== "undefined" ? browser : chrome;
 const $ = (id) => document.getElementById(id);
@@ -500,6 +502,9 @@ function renderAttachPreview() {
 // ---------- settings overlay ----------
 function openSettings() {
   $("set-apikey").value = state.settings.apiKey || "";
+  $("set-auth-method").value = state.settings.authMethod || AUTH_METHODS.API_KEY;
+  updateAuthMethodUI();
+  refreshSubStatus();
   populateModelSelect($("set-model"));
   $("set-model").value = state.settings.model;
   $("set-effort").value = state.settings.effort;
@@ -508,6 +513,57 @@ function openSettings() {
   $("set-bridge").checked = !!state.settings.bridgeEnabled;
   $("set-bridge-token").value = state.settings.bridgeToken || "";
   $("settings").hidden = false;
+}
+
+// ---------- auth method (API key vs subscription) ----------
+function updateAuthMethodUI() {
+  const sub = $("set-auth-method").value === AUTH_METHODS.SUBSCRIPTION;
+  $("auth-subscription").hidden = !sub;
+  $("auth-apikey").hidden = sub;
+}
+
+async function refreshSubStatus() {
+  const el = $("sub-status");
+  if (!el) return;
+  try {
+    const t = await oauth.loadTokens();
+    el.textContent = t?.access_token ? "Angemeldet ✓" : "Nicht angemeldet.";
+    $("btn-sub-logout").hidden = !t?.access_token;
+  } catch (_) {
+    el.textContent = "Nicht angemeldet.";
+  }
+}
+
+async function subLogin() {
+  try {
+    const url = await oauth.startLogin();
+    await api.tabs.create({ url });
+    $("sub-code-field").hidden = false;
+    $("set-sub-code").focus();
+    status("Nach dem Login den angezeigten Code hier einfügen.");
+  } catch (e) {
+    status("Login fehlgeschlagen: " + e.message);
+  }
+}
+
+async function subExchange() {
+  const code = $("set-sub-code").value.trim();
+  if (!code) return;
+  try {
+    await oauth.exchangeCode(code);
+    $("set-sub-code").value = "";
+    $("sub-code-field").hidden = true;
+    await refreshSubStatus();
+    status("Mit Claude-Konto angemeldet.");
+  } catch (e) {
+    status("Anmeldung fehlgeschlagen: " + e.message);
+  }
+}
+
+async function subLogout() {
+  await oauth.logout();
+  await refreshSubStatus();
+  status("Abgemeldet.");
 }
 
 // Start/stop the MCP bridge based on the current settings.
@@ -545,6 +601,7 @@ async function isReady() {
 }
 
 async function applySettings() {
+  state.settings.authMethod = $("set-auth-method").value;
   state.settings.apiKey = $("set-apikey").value.trim();
   state.settings.model = $("set-model").value;
   state.settings.effort = $("set-effort").value;
@@ -625,6 +682,10 @@ function bind() {
   $("btn-settings").addEventListener("click", openSettings);
   $("btn-save-settings").addEventListener("click", applySettings);
   $("btn-close-settings").addEventListener("click", () => ($("settings").hidden = true));
+  $("set-auth-method").addEventListener("change", updateAuthMethodUI);
+  $("btn-sub-login").addEventListener("click", subLogin);
+  $("btn-sub-exchange").addEventListener("click", subExchange);
+  $("btn-sub-logout").addEventListener("click", subLogout);
   $("btn-grant").addEventListener("click", grantAccess);
   // Adaptive-thinking quick toggle (per-chat reasoning mode, lives in the topbar).
   $("btn-think").addEventListener("click", async () => {
