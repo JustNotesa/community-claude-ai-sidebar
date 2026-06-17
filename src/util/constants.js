@@ -56,7 +56,7 @@ export const SETTINGS_KEY = "claude.settings";
 
 /** Default settings written on first run. */
 export const DEFAULT_SETTINGS = {
-  authMethod: "apikey", // AUTH_METHODS.API_KEY | AUTH_METHODS.SUBSCRIPTION
+  authMethod: "subscription", // AUTH_METHODS.API_KEY | AUTH_METHODS.SUBSCRIPTION
   apiKey: "",
   model: DEFAULT_MODEL,
   thinking: false,          // adaptive thinking on/off (Opus 4.8 supports adaptive only)
