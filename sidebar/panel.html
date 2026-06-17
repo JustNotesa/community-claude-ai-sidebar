@@ -12,6 +12,7 @@
       <button id="btn-sessions" class="icon-btn" title="Chats" aria-label="Chats">☰</button>
       <select id="model-select" class="model-select" title="Modell"></select>
       <button id="btn-new" class="icon-btn" title="Neuer Chat" aria-label="Neuer Chat">＋</button>
+      <button id="btn-usage" class="icon-btn" title="Nutzung &amp; Limits" aria-label="Nutzung und Limits">📊</button>
       <button id="btn-settings" class="icon-btn" title="Einstellungen" aria-label="Einstellungen">⚙</button>
     </header>
 
@@ -143,6 +144,29 @@
         <div class="settings-actions">
           <button id="btn-save-settings" class="primary">Speichern</button>
           <button id="btn-close-settings" class="ghost">Schließen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Usage & limits overlay -->
+    <div class="overlay" id="usage" hidden>
+      <div class="panel small">
+        <h2>Nutzung</h2>
+
+        <div class="usage-block">
+          <div class="usage-row-head">
+            <span>Kontextfenster</span>
+            <span id="usage-context-val">—</span>
+          </div>
+          <div class="meter"><div class="meter-fill" id="usage-context-fill" style="width:0%"></div></div>
+        </div>
+
+        <h3 id="usage-plan-title">Plannutzung</h3>
+        <div id="usage-windows"></div>
+        <small class="disclaimer" id="usage-hint"></small>
+
+        <div class="settings-actions">
+          <button id="btn-close-usage" class="ghost">Schließen</button>
         </div>
       </div>
     </div>
