@@ -1,7 +1,7 @@
 # Community Claude AI Sidebar
 
 > **Inoffizielles Community-Add-on — nicht von Anthropic.** Kein offizielles Claude-Produkt;
-> nutzt deinen **eigenen Anthropic-API-Key**. „Claude" und das Claude-Logo sind Marken von
+> nutzt deinen **eigenen Anthropic-API-Key** oder **Claude Abo**. „Claude" und das Claude-Logo sind Marken von
 > Anthropic — dieses Projekt steht in keiner Verbindung zu Anthropic und verwendet deren Logo nicht.
 
 Ein **agentischer KI-Assistent in der nativen Firefox-Sidebar** für die Anthropic-/Claude-API —
@@ -18,7 +18,7 @@ Verbesserungen, die der Chrome-Version fehlen:
 Claude kann die aktuelle Seite **lesen**, **klicken**, **tippen**, **Formulare
 ausfüllen**, **scrollen**, **navigieren** und **über mehrere Tabs hinweg lesen** —
 über eine Tool-Use-Schleife, die direkt gegen die Anthropic-API läuft (mit deinem
-eigenen API-Key).
+eigenen API-Key oder Claude Abo).
 
 ---
 
@@ -134,11 +134,6 @@ unzuverlässig → Content-Script wird per **`executeScript({func})`** injiziert
 `[hidden]` von Klassen-`display:` überschrieben → globale `[hidden]{display:none!important}`;
 `effort`/Thinking nur an unterstützende Modelle; keine DOM-Knoten in IndexedDB.
 
-### Authentifizierung
-Nur **API-Key** (Anthropic Console, nutzungsbasiert) — der ToS-konforme Weg.
-Ein Abo-/OAuth-Provider liegt als **geparkter** Code in `src/provider/oauth.js`,
-ist aber **nicht** verdrahtet: Subscription-OAuth aus Drittanbieter-Tools verstößt
-gegen Anthropics Consumer-Terms und wird serverseitig blockiert.
 
 ## TODO / Optionales
 
