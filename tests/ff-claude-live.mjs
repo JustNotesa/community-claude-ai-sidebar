@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { saveHandle, loadRegistry, saveRegistry, restoreSession } from "./ff-lib.mjs";
+import { saveHandle } from "./ff-lib.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const xpi = join(__dirname, "../web-ext-artifacts/community_claude_ai_sidebar-0.1.3.zip");
@@ -112,14 +112,9 @@ try {
   await driver.setContext(firefox.Context.CHROME);
   const exec = (s, ...a) => driver.executeScript(s, ...a);
 
-  // "Take the tabs with it": reopen every known session's tabs into its own
-  // coloured container, so reopening the window brings each session's tabs back.
-  const reg = loadRegistry();
-  let restored = 0;
-  for (const [sid, entry] of Object.entries(reg)) {
-    try { restored += await restoreSession(exec, entry); } catch (e) { console.log("restore failed for", sid, e.message); }
-  }
-  saveRegistry(reg); // userContextIds may have been refreshed on recreate
+  // NOTE: tab containers + restore now live IN THE EXTENSION (per conversation).
+  // The keeper deliberately does NOT open or restore any tabs itself — doing so
+  // would pollute the window with tabs unrelated to the extension's conversations.
 
   // Open the extension sidebar so you can LOG IN (API key or Claude subscription).
   await exec(`
@@ -134,11 +129,25 @@ try {
 
   // Persist the WebDriver handle so ANY session can re-attach (see ff-attach.mjs).
   saveHandle({ url: `http://127.0.0.1:${GECKO_PORT}`, sessionId, uuid: UUID, profileDir });
-  console.log("session", sessionId, "@ port", GECKO_PORT, "| restored", restored, "tab(s) across", Object.keys(reg).length, "session(s)");
+  console.log("session", sessionId, "@ port", GECKO_PORT);
 
   console.log("READY: persistent profile at", profileDir);
   console.log("Log in via the sidebar — it will persist across re-launches.");
-  setInterval(() => console.log("alive @", process.uptime().toFixed(0) + "s"), 30000);
+
+  // Stay ONLY as long as the window is open. When you close it, exit cleanly so
+  // no helper process lingers — and nothing ever reopens a window on its own.
+  const beat = setInterval(async () => {
+    try {
+      await driver.getAllWindowHandles();
+    } catch (e) {
+      const msg = String((e && (e.message || e)) || "");
+      if (/no such window|invalid session|discarded|browsing context|ECONNREFUSED|tab/i.test(msg)) {
+        clearInterval(beat);
+        console.log("Fenster geschlossen — Keeper beendet sich.");
+        await shutdown();
+      }
+    }
+  }, 5000);
   await new Promise(() => {});
 } catch (e) {
   console.error("ERROR:", e && (e.stack || e));
