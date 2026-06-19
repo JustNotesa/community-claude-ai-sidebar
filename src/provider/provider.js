@@ -6,10 +6,8 @@
 // { id, label, validateConfig, streamTurn, estimateCost }.
 
 import { anthropicProvider } from "./anthropic.js";
+import { subscriptionProvider } from "./oauth.js";
 import { AUTH_METHODS } from "../util/constants.js";
-// NOTE: The subscription/OAuth provider (./oauth.js) is intentionally PARKED —
-// not registered — because subscription OAuth from a third-party tool violates
-// Anthropic's ToS and is blocked server-side. The file is kept for reference.
 
 const registry = new Map();
 
@@ -33,3 +31,4 @@ export function providerForSettings(settings) {
 }
 
 registerProvider(anthropicProvider);
+registerProvider(subscriptionProvider);

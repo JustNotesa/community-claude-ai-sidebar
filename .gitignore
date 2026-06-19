@@ -13,6 +13,9 @@ web-ext-artifacts/
 
 # test artifacts
 tests/*.png
+# live-Firefox session handle + per-session container/tab registry (machine-local)
+tests/.ff-session.json
+tests/.ff-containers.json
 
 # macOS / misc
 .DS_Store

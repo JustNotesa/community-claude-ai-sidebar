@@ -54,6 +54,7 @@ export function estimateCost(modelId, usage) {
 export async function streamMessages({ headers, body, signal, onText, onThinking }) {
   const res = await fetch(API_URL, {
     method: "POST",
+    credentials: "omit", // never attach the user's cookies to API calls
     headers,
     body: JSON.stringify(body),
     signal,
@@ -71,7 +72,18 @@ export async function streamMessages({ headers, body, signal, onText, onThinking
     e.status = res.status;
     throw e;
   }
-  return parseSSE(res.body, { onText, onThinking });
+
+  // Capture rate-limit / usage-limit headers for the usage display. Which ones
+  // are actually readable depends on the server's Access-Control-Expose-Headers
+  // (cross-origin fetch); we keep whatever is exposed and parse it client-side.
+  const rateLimits = {};
+  res.headers.forEach((value, key) => {
+    if (key.startsWith("anthropic-ratelimit-") || key === "retry-after") rateLimits[key] = value;
+  });
+
+  const result = await parseSSE(res.body, { onText, onThinking });
+  result.rateLimits = rateLimits;
+  return result;
 }
 
 export async function parseSSE(stream, { onText, onThinking } = {}) {
@@ -180,6 +192,18 @@ export const anthropicProvider = {
       onText,
       onThinking,
     });
+  },
+  // Minimal request (max_tokens:1) just to read the rate-limit headers, so the
+  // usage panel/ring can show real limits without a full chat turn.
+  async probeLimits(settings, signal) {
+    const body = {
+      model: settings.model,
+      max_tokens: 1,
+      stream: true,
+      messages: [{ role: "user", content: "Hi" }],
+    };
+    const { rateLimits } = await streamMessages({ headers: apiKeyHeaders(settings.apiKey), body, signal });
+    return rateLimits;
   },
   estimateCost,
 };

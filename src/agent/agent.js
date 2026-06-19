@@ -113,6 +113,17 @@ export async function executeTool(name, input, ctx) {
       await waitForLoad(tabId);
       return { content: `Navigation (${input.action}) abgeschlossen.` };
     }
+    case "open_tab": {
+      if (!/^https?:\/\//i.test(input.url || ""))
+        return { content: "Nur http(s)-URLs sind erlaubt.", is_error: true };
+      const created = await api.tabs.create({ url: input.url, active: input.active !== false });
+      return {
+        content:
+          `Neuer Tab geöffnet [tab ${created.id}]: ${input.url}\n` +
+          `Diesen Tab mit read_tab (tab_id ${created.id}) lesen. ` +
+          `click/type/navigate wirken weiterhin auf den ursprünglichen Tab.`,
+      };
+    }
     case "list_tabs": {
       const tabs = await api.tabs.query({});
       const list = tabs
@@ -227,7 +238,7 @@ export async function runAgent({ history, settings, tabId, cb, signal }) {
 
       const cost = provider.estimateCost(settings.model, turn.usage);
       totalCost += cost;
-      cb.onUsage && cb.onUsage(turn.usage, cost, totalCost);
+      cb.onUsage && cb.onUsage(turn.usage, cost, totalCost, turn.rateLimits);
 
       if (settings.spendLimitUSD > 0 && totalCost >= settings.spendLimitUSD) {
         return cb.onDone(`Ausgabelimit erreicht (~$${totalCost.toFixed(3)}).`);
