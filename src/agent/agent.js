@@ -10,6 +10,7 @@ import { providerForSettings } from "../provider/provider.js";
 import { SYSTEM_PROMPT, buildTools } from "./tools.js";
 import { MAX_AGENT_STEPS } from "../util/constants.js";
 import { contentScriptMain } from "../content/content.js";
+import { ensureSessionContainer, recordSessionTab } from "../util/containers.js";
 
 const api = typeof browser !== "undefined" ? browser : chrome;
 
@@ -116,10 +117,26 @@ export async function executeTool(name, input, ctx) {
     case "open_tab": {
       if (!/^https?:\/\//i.test(input.url || ""))
         return { content: "Nur http(s)-URLs sind erlaubt.", is_error: true };
-      const created = await api.tabs.create({ url: input.url, active: input.active !== false });
+      const props = { url: input.url, active: input.active !== false };
+      // In the sidebar, open into THIS conversation's coloured container and
+      // remember the URL so it can be restored later. (No-op for the bridge path.)
+      let note = "";
+      if (ctx.session?.id) {
+        try {
+          const c = await ensureSessionContainer(ctx.session.id);
+          if (c?.cookieStoreId) {
+            props.cookieStoreId = c.cookieStoreId;
+            note = ` (Container „${c.color}“)`;
+          }
+        } catch (_) {}
+      }
+      const created = await api.tabs.create(props);
+      if (ctx.session?.id) {
+        try { await recordSessionTab(ctx.session.id, input.url, created.id); } catch (_) {}
+      }
       return {
         content:
-          `Neuer Tab geöffnet [tab ${created.id}]: ${input.url}\n` +
+          `Neuer Tab geöffnet [tab ${created.id}]${note}: ${input.url}\n` +
           `Diesen Tab mit read_tab (tab_id ${created.id}) lesen. ` +
           `click/type/navigate wirken weiterhin auf den ursprünglichen Tab.`,
       };
@@ -208,7 +225,7 @@ function waitForLoad(tabId, timeout = 8000) {
  * @param cb       callbacks: onText, onThinking, onAssistant, onToolUse,
  *                 onToolResult, confirm(name,input)->bool, onUsage, onDone, onError
  */
-export async function runAgent({ history, settings, tabId, cb, signal }) {
+export async function runAgent({ history, settings, tabId, cb, signal, session }) {
   const provider = providerForSettings(settings);
   const valid = await provider.validateConfig(settings);
   if (!valid.ok) {
@@ -264,7 +281,7 @@ export async function runAgent({ history, settings, tabId, cb, signal }) {
 
         let res;
         try {
-          res = await executeTool(tu.name, tu.input || {}, { tabId });
+          res = await executeTool(tu.name, tu.input || {}, { tabId, session });
         } catch (e) {
           res = { content: String(e?.message || e), is_error: true };
         }

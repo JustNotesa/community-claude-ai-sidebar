@@ -3,6 +3,7 @@
 
 import * as db from "../src/storage/db.js";
 import { runAgent, hasHostAccess } from "../src/agent/agent.js";
+import { restoreSessionTabs, showSessionTabs, sessionTabStats } from "../src/util/containers.js";
 import { renderMarkdown } from "../src/ui/markdown.js";
 import { providerForSettings, getProvider } from "../src/provider/provider.js";
 import { startBridge, stopBridge } from "../src/bridge/bridge.js";
@@ -172,6 +173,31 @@ async function newSession() {
   state.history = [];
   renderMessages();
   await refreshSessions();
+  updateRestoreButton();
+}
+
+// One adaptive button for the current conversation's tabs:
+//   some closed → "↺ N wiederherstellen" (reopen the closed ones)
+//   all open    → "N Tabs anzeigen"       (focus/highlight them among other tabs)
+//   no tabs     → hidden
+async function updateRestoreButton() {
+  const btn = $("btn-restore-tabs");
+  if (!btn) return;
+  let stats = { open: 0, missing: 0 };
+  if (state.session) {
+    try { stats = await sessionTabStats(state.session.id); } catch (_) {}
+  }
+  if (stats.missing > 0) {
+    btn.hidden = false;
+    btn.dataset.mode = "restore";
+    btn.textContent = `↺ ${stats.missing} Tab${stats.missing > 1 ? "s" : ""} wiederherstellen`;
+  } else if (stats.open > 0) {
+    btn.hidden = false;
+    btn.dataset.mode = "show";
+    btn.textContent = `${stats.open} Tab${stats.open > 1 ? "s" : ""} anzeigen`;
+  } else {
+    btn.hidden = true;
+  }
 }
 
 // If the conversation ends on an assistant turn that has unanswered tool_use
@@ -205,6 +231,7 @@ async function selectSession(id) {
   renderMessages();
   $("drawer").hidden = true;
   await refreshSessions();
+  updateRestoreButton();
 }
 
 // ---------- rendering ----------
@@ -458,7 +485,10 @@ async function send(text) {
     },
   };
 
-  await runAgent({ history: state.history, settings: state.settings, tabId, cb, signal: state.abort.signal });
+  await runAgent({ history: state.history, settings: state.settings, tabId, cb, signal: state.abort.signal, session: state.session });
+  // The agent may have opened+remembered tabs — refresh the session and button.
+  if (state.session) state.session = (await db.getSession(state.session.id)) || state.session;
+  updateRestoreButton();
 }
 
 function setRunning(on) {
@@ -974,6 +1004,17 @@ function bind() {
   $("btn-sub-exchange").addEventListener("click", subExchange);
   $("btn-sub-logout").addEventListener("click", subLogout);
   $("btn-grant").addEventListener("click", grantAccess);
+  $("btn-restore-tabs").addEventListener("click", async () => {
+    if (!state.session) return;
+    if ($("btn-restore-tabs").dataset.mode === "show") {
+      const n = await showSessionTabs(state.session.id);
+      status(n > 0 ? `${n} Tab(s) dieser Unterhaltung angezeigt.` : "Keine offenen Tabs.");
+    } else {
+      const n = await restoreSessionTabs(state.session.id);
+      status(n > 0 ? `${n} Tab(s) wiederhergestellt.` : "Alle Tabs sind bereits offen.");
+    }
+    updateRestoreButton();
+  });
   // Adaptive-thinking quick toggle (per-chat reasoning mode, lives in the topbar).
   $("btn-think").addEventListener("click", async () => {
     const model = MODELS.find((m) => m.id === state.settings.model);
@@ -1009,6 +1050,9 @@ function bind() {
   api.tabs.onUpdated.addListener((id, info) => {
     if (info.status === "complete" || info.title) updateTabBar();
   });
+  // Closing/opening a tab changes how many of this chat's tabs are "missing".
+  api.tabs.onRemoved.addListener(() => updateRestoreButton());
+  api.tabs.onCreated.addListener(() => updateRestoreButton());
   // Pending context pushed by background while sidebar is open
   api.storage.onChanged.addListener((changes, area) => {
     if (area === "local" && changes["claude.pending"]?.newValue) checkPending();
