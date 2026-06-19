@@ -54,6 +54,10 @@ export const OAUTH_KEY = "claude.oauth";
 /** Keys used in browser.storage.local for settings. */
 export const SETTINGS_KEY = "claude.settings";
 
+/** storage.local key caching the last-seen rate-limit headers + token usage, so
+ *  the usage panel/ring aren't empty after a sidebar reopen or a fresh login. */
+export const USAGE_KEY = "claude.usage";
+
 /** Default settings written on first run. */
 export const DEFAULT_SETTINGS = {
   authMethod: "subscription", // AUTH_METHODS.API_KEY | AUTH_METHODS.SUBSCRIPTION

@@ -193,5 +193,17 @@ export const anthropicProvider = {
       onThinking,
     });
   },
+  // Minimal request (max_tokens:1) just to read the rate-limit headers, so the
+  // usage panel/ring can show real limits without a full chat turn.
+  async probeLimits(settings, signal) {
+    const body = {
+      model: settings.model,
+      max_tokens: 1,
+      stream: true,
+      messages: [{ role: "user", content: "Hi" }],
+    };
+    const { rateLimits } = await streamMessages({ headers: apiKeyHeaders(settings.apiKey), body, signal });
+    return rateLimits;
+  },
   estimateCost,
 };

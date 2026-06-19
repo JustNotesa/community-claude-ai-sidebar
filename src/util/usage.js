@@ -56,7 +56,9 @@ function unifiedWindows(rl, now) {
     out.push({
       id,
       label: UNIFIED_LABELS[id] || `Limit (${id})`,
-      percent: clampPct(Number(rl[key])),
+      // The server reports unified utilization as a 0–1 fraction (e.g. 0.17 = 17%;
+      // the sibling -fallback-percentage:0.5 confirms the scale), so scale to percent.
+      percent: clampPct(Number(rl[key]) * 100),
       detail: formatReset(rl[`anthropic-ratelimit-unified-${id}-reset`], now),
     });
   }

@@ -6,7 +6,7 @@ import { runAgent, hasHostAccess } from "../src/agent/agent.js";
 import { renderMarkdown } from "../src/ui/markdown.js";
 import { providerForSettings, getProvider } from "../src/provider/provider.js";
 import { startBridge, stopBridge } from "../src/bridge/bridge.js";
-import { MODELS, DEFAULT_SETTINGS, SETTINGS_KEY, AUTH_METHODS, OAUTH } from "../src/util/constants.js";
+import { MODELS, DEFAULT_SETTINGS, SETTINGS_KEY, USAGE_KEY, AUTH_METHODS, OAUTH } from "../src/util/constants.js";
 import { buildUsageView } from "../src/util/usage.js";
 
 const oauth = getProvider("subscription").oauth;
@@ -100,25 +100,67 @@ async function refreshSessions() {
     };
     const title = el("span", "s-title", s.title);
     title.onclick = () => selectSession(s.id);
+
+    // In-place rename: clicking ✎ swaps the title for an inline input.
+    // Enter or blur commits, Escape cancels — no native prompt().
+    const startRename = () => {
+      const input = el("input", "s-edit");
+      input.value = s.title;
+      input.onclick = (ev) => ev.stopPropagation();
+      let done = false;
+      const commit = async (save) => {
+        if (done) return;
+        done = true;
+        const next = input.value.trim();
+        if (save && next && next !== s.title) {
+          await db.updateSession(s.id, { title: next });
+        }
+        refreshSessions();
+      };
+      input.onkeydown = (ev) => {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          commit(true);
+        } else if (ev.key === "Escape") {
+          ev.preventDefault();
+          commit(false);
+        }
+      };
+      input.onblur = () => commit(true);
+      li.replaceChild(input, title);
+      input.focus();
+      input.select();
+    };
     const ren = el("span", "s-act", "✎");
     ren.title = "Umbenennen";
-    ren.onclick = async (e) => {
+    ren.onclick = (e) => {
       e.stopPropagation();
-      const t = prompt("Chat umbenennen:", s.title);
-      if (t) {
-        await db.updateSession(s.id, { title: t });
-        refreshSessions();
-      }
+      startRename();
     };
-    const del = el("span", "s-act", "🗑");
+    // Inline two-click confirm (no native confirm(): unreliable in the sidebar
+    // and auto-dismissed under WebDriver). First click arms, second deletes;
+    // it disarms itself after 3s.
+    const del = el("span", "s-act s-del", "Löschen");
     del.title = "Löschen";
+    let armTimer = null;
+    const disarm = () => {
+      del.classList.remove("armed");
+      del.textContent = "Löschen";
+      if (armTimer) clearTimeout(armTimer);
+      armTimer = null;
+    };
     del.onclick = async (e) => {
       e.stopPropagation();
-      if (confirm(`Chat „${s.title}“ löschen?`)) {
-        await db.deleteSession(s.id);
-        if (state.session && state.session.id === s.id) await newSession();
-        refreshSessions();
+      if (!del.classList.contains("armed")) {
+        del.classList.add("armed");
+        del.textContent = "Wirklich löschen?";
+        armTimer = setTimeout(disarm, 3000);
+        return;
       }
+      disarm();
+      await db.deleteSession(s.id);
+      if (state.session && state.session.id === s.id) await newSession();
+      refreshSessions();
     };
     li.append(pin, title, ren, del);
     ul.appendChild(li);
@@ -193,7 +235,7 @@ function renderHistoryMessage(msg) {
         for (const b of msg.content) {
           if (b.type === "tool_result") {
             const line = el("div", "tool " + (b.is_error ? "err" : "ok"));
-            line.appendChild(el("div", "res", contentToText(b.content)));
+            renderToolResult(line, b.content);
             m.appendChild(line);
           }
         }
@@ -220,11 +262,48 @@ function renderHistoryMessage(msg) {
   body.innerHTML = renderMarkdown(text);
 }
 
-function contentToText(content) {
-  if (typeof content === "string") return content;
-  if (Array.isArray(content))
-    return content.map((b) => (b.type === "text" ? b.text : `[${b.type}]`)).join(" ");
-  return String(content ?? "");
+// Render a tool_result's content into `container`. Image blocks (e.g. the
+// screenshot tool) become clickable thumbnails that open full-size in a
+// lightbox; everything else is shown as truncated text.
+function renderToolResult(container, content, max = 240) {
+  const blocks = Array.isArray(content)
+    ? content
+    : [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
+  for (const b of blocks) {
+    if (b.type === "image" && b.source?.data) {
+      const src = `data:${b.source.media_type};base64,${b.source.data}`;
+      const img = el("img", "tool-shot");
+      img.src = src;
+      img.title = "Zum Vergrößern klicken";
+      img.addEventListener("click", () => openLightbox(src));
+      container.appendChild(img);
+    } else if (b.type === "text") {
+      if (b.text) container.appendChild(el("div", "res", summarize(b.text, max)));
+    } else {
+      container.appendChild(el("div", "res", `[${b.type}]`));
+    }
+  }
+}
+
+// Full-size image viewer. Built lazily and reused; click the backdrop, the
+// close button or press Escape to dismiss.
+function openLightbox(src) {
+  let ov = $("lightbox");
+  if (!ov) {
+    ov = el("div", "overlay lightbox");
+    ov.id = "lightbox";
+    const img = el("img");
+    img.id = "lightbox-img";
+    const close = el("button", "lightbox-close", "✕");
+    close.title = "Schließen";
+    ov.append(img, close);
+    const hide = () => (ov.hidden = true);
+    ov.addEventListener("click", (e) => { if (e.target !== img) hide(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !ov.hidden) hide(); });
+    document.body.appendChild(ov);
+  }
+  $("lightbox-img").src = src;
+  ov.hidden = false;
 }
 
 function addUserBubble(content) {
@@ -345,9 +424,8 @@ async function send(text) {
       const chip = chips.get(block.id);
       if (!chip) return;
       chip.classList.add(isErr ? "err" : "ok");
-      const text = res === "abgelehnt" ? "Abgelehnt" : contentToText(res?.content ?? res);
-      const r = el("div", "res", summarize(text, 240));
-      chip.appendChild(r);
+      if (res === "abgelehnt") chip.appendChild(el("div", "res", "Abgelehnt"));
+      else renderToolResult(chip, res?.content ?? res);
       scrollDown();
     },
     async onAssistant(content, usage) {
@@ -361,6 +439,7 @@ async function send(text) {
       state.lastUsage = usage;
       if (rateLimits && Object.keys(rateLimits).length) state.lastRateLimits = rateLimits;
       renderUsage();
+      persistUsage();
     },
     onDone(reason) {
       setRunning(false);
@@ -617,6 +696,8 @@ async function redeemCode(pasted, auto = false) {
     $("sub-code-field").hidden = true;
     await refreshSubStatus();
     subStatus("Mit Claude-Konto angemeldet ✓");
+    // Pull current limits right away so the usage panel/ring aren't empty.
+    if (!Object.keys(state.lastRateLimits).length) refreshLimits();
     return true;
   } catch (e) {
     subStatus("Anmeldung fehlgeschlagen: " + e.message);
@@ -703,11 +784,71 @@ function renderUsage() {
   } else {
     hint.textContent = "";
   }
+
+  // Live: mirror the highest usage (closest limit, else context window) onto the
+  // toolbar ring, so the fill is visible at a glance without opening the panel.
+  const gaugePct = view.windows.length
+    ? Math.max(...view.windows.map((w) => w.percent))
+    : ctx
+      ? ctx.percent
+      : 0;
+  const arc = document.querySelector("#btn-usage .arc");
+  if (arc) {
+    arc.setAttribute("stroke-dasharray", `${gaugePct} 100`);
+    arc.classList.toggle("high", gaugePct >= 90);
+  }
+  $("btn-usage").title =
+    view.windows.length || ctx ? `Nutzung & Limits — ${gaugePct}%` : "Nutzung & Limits";
+}
+
+// Persist the latest limits/usage so the panel + ring survive a reopen/relaunch.
+function persistUsage() {
+  api.storage.local
+    .set({ [USAGE_KEY]: { rateLimits: state.lastRateLimits, usage: state.lastUsage } })
+    .catch(() => {});
+}
+async function restoreUsage() {
+  try {
+    const g = await api.storage.local.get(USAGE_KEY);
+    const u = g[USAGE_KEY];
+    if (u && u.rateLimits && Object.keys(u.rateLimits).length) state.lastRateLimits = u.rateLimits;
+    if (u && u.usage) state.lastUsage = u.usage;
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+// Best-effort: fetch current plan limits without a full chat turn (a max_tokens:1
+// request) so the panel/ring aren't empty right after login. Silent on failure.
+let probingLimits = false;
+async function refreshLimits() {
+  if (probingLimits) return;
+  const provider = providerForSettings(state.settings);
+  if (!provider || !provider.probeLimits) return;
+  const v = await provider.validateConfig(state.settings);
+  if (!v.ok) return;
+  probingLimits = true;
+  const hint = $("usage-hint");
+  if (hint && !$("usage").hidden) hint.textContent = "Limits werden abgerufen …";
+  try {
+    const rl = await provider.probeLimits(state.settings);
+    if (rl && Object.keys(rl).length) {
+      state.lastRateLimits = rl;
+      persistUsage();
+      renderUsage();
+    }
+  } catch (_) {
+    /* probe is best-effort; leave the existing hint */
+  } finally {
+    probingLimits = false;
+  }
 }
 
 function openUsage() {
   renderUsage();
   $("usage").hidden = false;
+  // No limits captured yet? Fetch them now so the panel isn't empty.
+  if (!Object.keys(state.lastRateLimits).length) refreshLimits();
 }
 
 // Start/stop the MCP bridge based on the current settings.
@@ -878,6 +1019,8 @@ async function init() {
   await loadSettings();
   populateModelSelect($("model-select"));
   bind();
+  await restoreUsage(); // show last-known limits + ring fill immediately
+  renderUsage();
   updateThinkToggle();
   await updateTabBar();
   const sessions = await db.listSessions();
