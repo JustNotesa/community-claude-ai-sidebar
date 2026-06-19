@@ -1,6 +1,6 @@
 {
   "name": "claude-for-firefox",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "description": "Community Claude AI Sidebar — inofficial agentic AI sidebar for Firefox using your own Anthropic API key. Not affiliated with Anthropic.",
   "scripts": {
