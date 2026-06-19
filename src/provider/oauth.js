@@ -1,10 +1,3 @@
-// ⚠️ PARKED — NOT WIRED INTO THE BUILD.
-// Subscription/OAuth auth from a third-party tool violates Anthropic's Consumer
-// Terms and is blocked server-side (returns "OAuth authentication is currently
-// not supported"). This file is kept for reference only; it is not imported or
-// registered anywhere active. Do not re-enable without an explicit, ToS-aware
-// decision. The compliant path is the API-key provider (anthropic.js).
-//
 // Claude subscription provider — logs in with the user's Claude (Pro/Max)
 // account via the Claude Code OAuth flow and calls /v1/messages with a Bearer
 // token. No API key, no per-token billing.
@@ -71,23 +64,52 @@ async function startLogin() {
   return url.toString();
 }
 
+// POST a form to a token endpoint, retrying transient network failures.
+// A thrown TypeError here is "NetworkError when attempting to fetch resource":
+// the request never completed (flaky link, VPN/proxy, a content blocker, or the
+// panel losing focus mid-flight) — NOT an HTTP/credential error, which resolves
+// with res.ok === false instead. Retry a few times, then surface an actionable
+// message naming the host instead of the browser's cryptic default.
+async function postForm(url, params) {
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await fetch(url, {
+        method: "POST",
+        credentials: "omit",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams(params),
+      });
+    } catch (e) {
+      lastErr = e;
+      await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+    }
+  }
+  throw new Error(
+    `Netzwerkfehler: die Anfrage an ${new URL(url).host} kam nicht durch ` +
+      `(${lastErr?.message || "fetch failed"}). Bitte Verbindung/VPN/Inhaltsblocker prüfen und erneut „Anmelden“.`
+  );
+}
+
 /** Exchange the pasted code (often "code#state") for tokens. */
 async function exchangeCode(pasted) {
   const g = await api.storage.local.get(PKCE_KEY);
   const pkce = g[PKCE_KEY];
   if (!pkce) throw new Error("Kein Login gestartet — bitte zuerst „Anmelden“ klicken.");
   const [code, stateFromCode] = String(pasted).trim().split("#");
-  const res = await fetch(OAUTH.tokenUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      grant_type: "authorization_code",
-      code,
-      state: stateFromCode || pkce.state,
-      redirect_uri: OAUTH.redirectUri,
-      client_id: OAUTH.clientId,
-      code_verifier: pkce.verifier,
-    }),
+  // Form-urlencoded, matching the official browser extension's token exchange
+  // (the API expects application/x-www-form-urlencoded here, not JSON).
+  // credentials:"omit" (inside postForm) is essential: without it the browser
+  // attaches the user's claude.ai session cookies, and the server then
+  // rate-limits the exchange as a session request (the official extension omits
+  // credentials for the same reason).
+  const res = await postForm(OAUTH.tokenUrl, {
+    grant_type: "authorization_code",
+    client_id: OAUTH.clientId,
+    code,
+    redirect_uri: OAUTH.redirectUri,
+    state: stateFromCode || pkce.state,
+    code_verifier: pkce.verifier,
   });
   if (!res.ok) {
     let d = `HTTP ${res.status}`;
@@ -107,10 +129,10 @@ async function exchangeCode(pasted) {
 }
 
 async function refresh(refresh_token) {
-  const res = await fetch(OAUTH.tokenUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ grant_type: "refresh_token", refresh_token, client_id: OAUTH.clientId }),
+  const res = await postForm(OAUTH.tokenUrl, {
+    grant_type: "refresh_token",
+    client_id: OAUTH.clientId,
+    refresh_token,
   });
   if (!res.ok) throw new Error("Token-Refresh fehlgeschlagen — bitte erneut anmelden.");
   const data = await res.json();
@@ -167,6 +189,29 @@ export const subscriptionProvider = {
       if (e.status === 401) {
         const fresh = await getValidToken(true);
         return streamMessages({ headers: bearerHeaders(fresh), body, signal, onText, onThinking });
+      }
+      throw e;
+    }
+  },
+  // Minimal request (max_tokens:1) just to read the unified rate-limit headers,
+  // so the usage panel/ring show real limits right after login (count_tokens does
+  // NOT return them; a real /v1/messages call does).
+  async probeLimits(settings, signal) {
+    const body = {
+      model: settings.model,
+      max_tokens: 1,
+      stream: true,
+      system: [{ type: "text", text: CLAUDE_CODE_SYSTEM }],
+      messages: [{ role: "user", content: "Hi" }],
+    };
+    const run = (tok) => streamMessages({ headers: bearerHeaders(tok), body, signal });
+    try {
+      const { rateLimits } = await run(await getValidToken());
+      return rateLimits;
+    } catch (e) {
+      if (e.status === 401) {
+        const { rateLimits } = await run(await getValidToken(true));
+        return rateLimits;
       }
       throw e;
     }

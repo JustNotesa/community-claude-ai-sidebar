@@ -154,6 +154,11 @@ T("navigate", {
   description: "Navigate the active tab: open an http(s) URL, or go back/forward/reload.",
   inputSchema: { action: z.enum(["url", "back", "forward", "reload"]), url: z.string().optional() },
 });
+T("open_tab", {
+  title: "Open new tab",
+  description: "Open an http(s) URL in a NEW browser tab; the current tab is left untouched. Returns the new tab's id — read it with read_tab. Use navigate to change the current tab instead.",
+  inputSchema: { url: z.string(), active: z.boolean().optional() },
+});
 T("list_tabs", {
   title: "List tabs",
   description: "List open web tabs (id, title, url, active).",

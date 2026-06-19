@@ -24,6 +24,10 @@ Operating rules:
   credentials, or leaves the current site unexpectedly.
 - Never enter passwords, payment details, or 2FA codes. Ask the user to do that.
 - If you cannot find an element, scroll or re-read the page before giving up.
+- You CAN open pages in new tabs. Use open_tab(url) when the user asks to open
+  something in a new tab, or to open several pages at once (call it once per URL).
+  navigate changes the CURRENT tab; open_tab leaves it and opens another. Read a
+  tab you opened with read_tab using the id that open_tab returns.
 - To SEE the page visually — images, logos, charts, layout, colours, anything not
   in the text snapshot — use the screenshot tool when it is available. read_page
   returns text and interactive elements, NOT images. If the user asks whether you
@@ -112,6 +116,23 @@ export function buildTools(settings = {}) {
           url: { type: "string", description: "Required when action is 'url'. Must be http(s)." },
         },
         required: ["action"],
+      },
+    },
+    {
+      name: "open_tab",
+      description:
+        "Open a URL in a NEW browser tab; the current tab is left untouched. Use this when the user asks to open something in a new tab, or to open several pages at once (call once per URL). Returns the new tab's id — read or act on it via read_tab/list_tabs. To change the CURRENT tab instead, use navigate.",
+      input_schema: {
+        type: "object",
+        properties: {
+          url: { type: "string", description: "The URL to open. Must be http(s)." },
+          active: {
+            type: "boolean",
+            description:
+              "Focus the new tab (default true). Pass false to open it in the background — useful when opening several tabs at once so focus does not jump each time.",
+          },
+        },
+        required: ["url"],
       },
     },
     {
