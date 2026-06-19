@@ -18,9 +18,10 @@ test("context window meter sums input + cache tokens", () => {
 test("subscription: unified utilization headers → plan bars, 5h before 7d", () => {
   const v = buildUsageView({
     rateLimits: {
-      "anthropic-ratelimit-unified-7d-utilization": "49",
+      // Real server reports utilization as a 0–1 fraction (verified live).
+      "anthropic-ratelimit-unified-7d-utilization": "0.49",
       "anthropic-ratelimit-unified-7d-reset": "2026-06-20T00:00:00Z",
-      "anthropic-ratelimit-unified-5h-utilization": "17",
+      "anthropic-ratelimit-unified-5h-utilization": "0.17",
       "anthropic-ratelimit-unified-5h-reset": "2026-06-17T23:59:00Z",
     },
     now: NOW,

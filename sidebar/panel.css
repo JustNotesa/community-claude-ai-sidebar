@@ -56,7 +56,13 @@ body {
 .icon-btn {
   border: none; background: transparent; color: var(--ink); flex: 0 0 auto;
   font-size: 18px; cursor: pointer; width: 30px; height: 30px; border-radius: 7px;
+  display: inline-flex; align-items: center; justify-content: center;
 }
+/* Circular usage gauge — replaces the old 📊 emoji on the Nutzung-&-Limits button. */
+.ic-gauge { width: 20px; height: 20px; display: block; fill: none; }
+.ic-gauge .track { stroke: currentColor; opacity: .25; stroke-width: 2.5; }
+.ic-gauge .arc { stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; transition: stroke-dasharray .4s ease; }
+.ic-gauge .arc.high { stroke: var(--danger); }
 .icon-btn:hover { background: var(--border); }
 .icon-btn:disabled { opacity: .35; cursor: default; }
 .icon-btn:disabled:hover { background: transparent; }
@@ -109,8 +115,16 @@ body {
 .session-list li:hover { background: var(--bg-alt); }
 .session-list li.active { background: var(--user-bg); }
 .session-list .s-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.session-list .s-edit {
+  flex: 1; min-width: 0; font: inherit; font-size: 13px;
+  border: 1px solid var(--accent); border-radius: 5px; padding: 2px 5px;
+  background: var(--bg-elev); color: var(--ink);
+}
 .session-list .s-act { opacity: .5; font-size: 12px; }
 .session-list .s-act:hover { opacity: 1; }
+.session-list .s-del { white-space: nowrap; }
+.session-list .s-del:hover { color: var(--danger, #d33); }
+.session-list .s-del.armed { color: var(--danger); opacity: 1; font-weight: 600; }
 
 /* Messages */
 .messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
@@ -164,6 +178,22 @@ body {
   border: none; border-radius: 50%; background: var(--danger); color: #fff; cursor: pointer; font-size: 13px;
 }
 .bubble-img { max-width: 100%; max-height: 260px; border-radius: 8px; display: block; margin: 2px 0; }
+
+/* Screenshot result: a clickable thumbnail that opens the full image. */
+.tool .tool-shot {
+  display: block; margin: 4px 0 4px 20px; max-width: calc(100% - 20px); max-height: 160px;
+  border: 1px solid var(--border); border-radius: 8px; cursor: zoom-in;
+}
+.tool .tool-shot:hover { border-color: var(--accent); }
+
+/* Full-size image viewer (scrolls for tall screenshots). */
+.lightbox { align-items: flex-start; overflow: auto; cursor: zoom-out; }
+.lightbox img { max-width: 100%; height: auto; border-radius: 8px; cursor: default; }
+.lightbox-close {
+  position: fixed; top: 10px; right: 12px; width: 30px; height: 30px; z-index: 1;
+  border: none; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff;
+  font-size: 15px; line-height: 1; cursor: pointer;
+}
 
 .statusbar { padding: 3px 12px; font-size: 11px; color: var(--ink-soft); min-height: 16px; background: var(--bg-alt); }
 
