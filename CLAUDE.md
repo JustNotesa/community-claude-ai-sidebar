@@ -42,9 +42,11 @@ triggeringPrincipal })`.
 - `ff-attach.mjs` ruft **nie** `driver.quit()` (würde das geteilte Fenster schließen).
 - Die Session kann im *chrome*-Kontext stehen; `ff-attach.mjs` schaltet für
   Inhalts-Aktionen selbst auf *content* zurück.
-- Keeper ist via `nohup` abgekoppelt → überlebt das Session-Ende **best effort**.
-  Ist er weg, einfach den Start-Befehl erneut ausführen — Login persistiert
-  (`extensions.webextensions.keepStorageOnUninstall` + gepinnte UUID).
+- Keeper nur **bei Bedarf** starten; er **beendet sich selbst**, sobald das
+  Fenster geschlossen wird (kein Dauerprozess, **kein Auto-Respawn/Watchdog** —
+  vom User ausdrücklich so gewünscht). Login persistiert über Neustarts
+  (`extensions.webextensions.keepStorageOnUninstall` + gepinnte UUID) — wenn das
+  Fenster wieder gebraucht wird, einfach den Start-Befehl erneut ausführen.
 - Stoppen (nur diese Instanz, **nie** das normale Firefox des Users):
   `pkill -f "ff-claude-live.mjs"; pkill -f "marionette-port 2828"; pkill -f "claude-ff-profile"`.
 - Der User hat oft mehrere echte Firefox-Profile offen — Selenium-Instanz **nur**

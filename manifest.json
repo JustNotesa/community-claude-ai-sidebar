@@ -28,7 +28,9 @@
     "scripting",
     "contextMenus",
     "webRequest",
-    "webRequestBlocking"
+    "webRequestBlocking",
+    "contextualIdentities",
+    "cookies"
   ],
 
   "host_permissions": [
