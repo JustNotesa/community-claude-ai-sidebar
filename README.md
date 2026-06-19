@@ -52,9 +52,7 @@ gegen die Anthropic-API.
 > Profil erhalten). Für eine dauerhafte **unsignierte** Installation Firefox
 > **Developer Edition / Nightly** (`xpinstall.signatures.required=false`), oder über
 > AMO signieren (`npm run sign`).
->
-> **Hinweis zum Abo-Login:** Ein Abo über ein Drittanbieter-Tool zu nutzen ist eine
-> Grauzone gegenüber Anthropics Nutzungsbedingungen — Einsatz auf eigene Verantwortung.
+
 
 ## Architektur
 
